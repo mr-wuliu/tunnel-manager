@@ -13,6 +13,8 @@ pub enum Commands {
     Run,
     /// 停止选定的连接
     Stop,
+    /// 查看连接日志
+    Log,
     /// 设置连接参数
     Set {
         /// 连接别名
@@ -118,6 +120,34 @@ impl Commands {
                     Err(e) => {
                         pb.finish_with_message(format!("停止失败: {}", e));
                         return Err(e);
+                    }
+                }
+            }
+            Commands::Log => {
+                let tunnels = config.list_running_tunnels()?;
+                if tunnels.is_empty() {
+                    println!("没有正在运行的连接");
+                    return Ok(());
+                }
+                
+                let items: Vec<String> = tunnels.iter()
+                    .map(|t| format!("{} ({})", t.alias, t.source))
+                    .collect();
+                
+                let selection = Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt("选择要查看日志的连接")
+                    .items(&items)
+                    .default(0)
+                    .interact()?;
+                
+                let tunnel = &tunnels[selection];
+                let logs = tunnel.get_logs();
+                
+                if logs.is_empty() {
+                    println!("暂无日志");
+                } else {
+                    for line in logs {
+                        println!("{}", line);
                     }
                 }
             }
